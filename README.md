@@ -44,3 +44,15 @@ The CNode class is not within the Game namespace, and as such this inconsistent 
 This tool recognises and fixes hardcoded addresses in .s files, this "fix" is a simple annotation using a label and then referencing the label where the address is found.
 
 You will have to do extra searches for false positives and .data to .data pointers, although this solution can decrease the amount of pointers from tens of thousands to hundreds, making it much quicker and easier for shiftability to occur (hence the name Shifter).
+
+## Common Decomp Filler
+This is a "multi-tool" of sorts, the tool is only made for <a href="https://github.com/intns/mapdas">mapdas</a> generated projects.
+Features:
+- Asks the user for known namespaces, for scope correction of functions
+- Fixes constructor / destructor functions (would have "void" prefixed)
+- Fixes certain improper const implementations from earlier versions of mapdas
+- Recognises simple ASM patterns and fills the code in automatically, such as:
+	- "blr" functions (an empty function)
+	- "li" -> "blr" functions that reference r3, so as to simply return a numeric value (automatically sets return value to `u32` or `s32`)
+	- "stw", "sth", "stb" functions where it can a) set a single member variable to an argument OR b) setting a single member variable to a constant
+- Adds an #include "types.h" to the start of each .cpp file if needed, to make sure it is compatible with the automatically generated code
