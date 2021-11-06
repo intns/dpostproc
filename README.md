@@ -39,3 +39,6 @@ struct EnemyAnimKeyEvent : public CNode
 ```
 
 The CNode class is not within the Game namespace, and as such this inconsistent scoping must be accounted for when implementing the tool's output.
+
+## Shifter
+This tool recognises and fixes hardcoded addresses in .s files, this "fix" is a simple annotation using a label and then referencing the label where the address is found. You will have to do extra searches for false positives and .data to .data pointers, although this solution can decrease the amount of pointers from tens of thousands to hundreds, making it much quicker and easier for shiftability to occur (hence the name Shifter).
