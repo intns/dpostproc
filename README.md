@@ -7,16 +7,17 @@ This tool generates C++ source code from a supplied virtual table in the console
 ### Example
 Input:
 
-```
+```asm
 __vt__Q24Game17EnemyAnimKeyEvent:
 .4byte 0
 .4byte 0
 .4byte __dt__Q24Game17EnemyAnimKeyEventFv
-.4byte getChildCount__5CNodeFv```
+.4byte getChildCount__5CNodeFv
+```
 
 Output:
 
-```
+```cpp
 // NOTE: THE SCOPE AND FUNCTION OFFSETS OF ALL CLASSES BESIDES THE ONE YOU INPUTTED MAY BE WRONG!
 
 namespace Game { // Unsure if namespace or structure!
@@ -34,6 +35,7 @@ struct EnemyAnimKeyEvent : public CNode
 
         // _00, VTBL
 };
-} // namespace Game```
+} // namespace Game
+```
 
 The CNode class is not within the Game namespace, and as such this inconsistent scoping must be accounted for when implementing the tool's output.
