@@ -101,7 +101,11 @@ namespace VtblGenerator
 
 					if (!isDtor)
 					{
-						curFunc = "virtual void " + curFunc + ";";
+						curFunc = $"virtual void {curFunc}";
+					}
+					else
+					{
+						curFunc = $"virtual {curFunc};";
 					}
 				}
 
