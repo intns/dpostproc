@@ -123,6 +123,10 @@ namespace VtblGenerator
 							if (parentSymbol._Offset == i)
 							{
 								structure._Symbols.Insert(i, parentSymbol);
+								if (parentSymbol._Name.Contains("~"))
+								{
+									structure._Symbols[i]._Name = "~" + structure._Name + "()";
+								}
 								found = true;
 								break;
 							}
@@ -346,8 +350,10 @@ namespace VtblGenerator
 				{
 					if (fileContents[i].StartsWith("__vt__"))
 					{
-						List<string> lines = new List<string>();
-						lines.Add(fileContents[i]);
+						List<string> lines = new()
+						{
+							fileContents[i]
+						};
 						while (fileContents[++i].Trim().StartsWith(".4byte"))
 						{
 							lines.Add(fileContents[i]);

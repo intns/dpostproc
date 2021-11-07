@@ -107,6 +107,10 @@ namespace VtblGenerator
 							if (parentSymbol._Offset == i)
 							{
 								structure._Symbols.Insert(i, parentSymbol);
+								if (parentSymbol._Name.Contains("~"))
+								{
+									structure._Symbols[i]._Name = "~" + structure._Name + "()";
+								}
 								found = true;
 								break;
 							}
