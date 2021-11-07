@@ -19,7 +19,7 @@ Output:
 
 ```cpp
 struct CNode {
-        virtual void _00() = 0;       // _00
+        virtual ~CNode();             // _00
         virtual void getChildCount(); // _04
 
         // _00 VTBL
@@ -28,7 +28,7 @@ struct CNode {
 
 namespace Game {
 struct EnemyAnimKeyEvent : public CNode {
-        virtual ~EnemyAnimKeyEvent(); // _00
+        virtual ~CNode();             // _00
         virtual void getChildCount(); // _04
 
         // _00 VTBL
