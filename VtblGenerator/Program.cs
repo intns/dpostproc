@@ -248,7 +248,14 @@ namespace VtblGenerator
 					name = name.Replace(_Qualifiers[i] + "::", "");
 				}
 				// Normal functions
-				output += "void " + name;
+				if (!name.Contains("~"))
+				{
+					output += "void " + name;
+				}
+				else
+				{
+					output += name;
+				}
 			}
 			else
 			{
@@ -264,6 +271,7 @@ namespace VtblGenerator
 	{
 		static void Main(string[] args)
 		{
+			Console.WriteLine("[INPUT START]");
 			List<string> lines = new();
 			string currentInp = Console.ReadLine();
 			while (!string.IsNullOrEmpty(currentInp))
@@ -271,13 +279,14 @@ namespace VtblGenerator
 				lines.Add(currentInp);
 				currentInp = Console.ReadLine();
 			}
-
+			Console.WriteLine("[INPUT END]");
 			if (lines.Count == 0)
 			{
 				Console.WriteLine("Copy and paste __vt__ definition from an .s file!");
 				return;
 			}
 
+			Console.WriteLine("[OUTPUT START]");
 			Console.WriteLine("// NOTE: THE SCOPE AND FUNCTION OFFSETS OF ALL CLASSES BESIDES THE ONE YOU INPUTTED MAY BE WRONG!\n");
 
 			// Remove empty lines
@@ -298,6 +307,7 @@ namespace VtblGenerator
 				manager.ParseLine(lines[i].Replace("\"", ""), i - 3);
 			}
 			manager.Output();
+			Console.WriteLine("[OUTPUT END]");
 		}
 	}
 }
