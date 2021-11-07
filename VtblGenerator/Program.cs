@@ -1,16 +1,14 @@
-﻿using System;
+﻿using arookas;
+using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using arookas;
 
 namespace VtblGenerator
 {
-
-	class Manager
+	internal class Manager
 	{
-		Structure _ParentStruct = new();
-		List<Structure> _DerivativeStructs = new();
+		private readonly Structure _ParentStruct = new();
+		private readonly List<Structure> _DerivativeStructs = new();
 
 		public Manager(string vtblMangled)
 		{
@@ -46,7 +44,7 @@ namespace VtblGenerator
 				// If the function isn't from the parent structure, then we can create a new structure
 				// or if the structure exists, add to it
 				bool found = false;
-				foreach (var structure in _DerivativeStructs)
+				foreach (Structure structure in _DerivativeStructs)
 				{
 					if (structure._Name == qualifiers[^1])
 					{
@@ -58,8 +56,10 @@ namespace VtblGenerator
 
 				if (!found)
 				{
-					var structure = new Structure();
-					structure._Name = qualifiers[^1];
+					Structure structure = new()
+					{
+						_Name = qualifiers[^1]
+					};
 
 					for (int i = 0; i < qualifiers.Count - 1; i++)
 					{
@@ -76,12 +76,12 @@ namespace VtblGenerator
 
 		public void Output()
 		{
-			List<string> symbolString = new();
-			int maxWidth = 0;
+			List<string> symbolString;
+			int maxWidth;
 
-			foreach (var structure in _DerivativeStructs)
+			foreach (Structure structure in _DerivativeStructs)
 			{
-				foreach (var qual in structure._Qualifiers)
+				foreach (string qual in structure._Qualifiers)
 				{
 					Console.WriteLine($"namespace {qual} {{");
 				}
@@ -122,6 +122,8 @@ namespace VtblGenerator
 
 					Console.WriteLine($"// _{structure._Symbols[i]._Offset.ToString("X2").ToUpper()}");
 				}
+
+				Console.WriteLine("\n\t// _00 VTBL\n");
 				Console.WriteLine("};");
 
 				for (int i = structure._Qualifiers.Count - 1; i >= 0; i--)
@@ -133,7 +135,7 @@ namespace VtblGenerator
 			}
 
 			// MAIN STRUCTURE
-			foreach (var qual in _ParentStruct._Qualifiers)
+			foreach (string qual in _ParentStruct._Qualifiers)
 			{
 				Console.WriteLine($"namespace {qual} {{");
 			}
@@ -185,6 +187,8 @@ namespace VtblGenerator
 
 				Console.WriteLine($"// _{_ParentStruct._Symbols[i]._Offset.ToString("X2").ToUpper()}");
 			}
+
+			Console.WriteLine("\n\t// _00 VTBL\n");
 			Console.WriteLine("};");
 
 			for (int i = _ParentStruct._Qualifiers.Count - 1; i >= 0; i--)
@@ -196,12 +200,11 @@ namespace VtblGenerator
 		}
 	}
 
-
-	class Structure
+	internal class Structure
 	{
 		public string _Name;
-		public List<string> _Qualifiers = new List<string>();
-		public List<FunctionSymbol> _Symbols = new List<FunctionSymbol>();
+		public List<string> _Qualifiers = new();
+		public List<FunctionSymbol> _Symbols = new();
 
 		// Param is demangled vtbl string
 		public void SetFromVtbl(string vtblStr)
@@ -215,14 +218,14 @@ namespace VtblGenerator
 		}
 	}
 
-
-	class FunctionSymbol
+	internal class FunctionSymbol
 	{
-		public List<string> _Qualifiers = new List<string>();
+		public List<string> _Qualifiers = new();
 		public string _Name = null;
 		public int _Offset = 0;
 		public bool _IsPureVirtual = false;
 
+#nullable enable
 		public FunctionSymbol(int offset, List<string>? qualifiers, string? name)
 		{
 			if (name != null)
@@ -235,6 +238,7 @@ namespace VtblGenerator
 			}
 			_Offset = offset;
 		}
+#nullable disable
 
 		public override string ToString()
 		{
@@ -267,9 +271,9 @@ namespace VtblGenerator
 		}
 	}
 
-	class Program
+	internal class Program
 	{
-		static void Main(string[] args)
+		private static void Main()
 		{
 			Console.WriteLine("[INPUT START]");
 			List<string> lines = new();
@@ -287,7 +291,6 @@ namespace VtblGenerator
 			}
 
 			Console.WriteLine("[OUTPUT START]");
-			Console.WriteLine("// NOTE: THE SCOPE AND FUNCTION OFFSETS OF ALL CLASSES BESIDES THE ONE YOU INPUTTED MAY BE WRONG!\n");
 
 			// Remove empty lines
 			lines = lines.Where(s => !string.IsNullOrEmpty(s)).ToList();
@@ -301,7 +304,7 @@ namespace VtblGenerator
 				lines[i] = lines[i].Replace(".4byte", "").Trim();
 			}
 
-			Manager manager = new Manager(lines[0]);
+			Manager manager = new(lines[0]);
 			for (int i = 3; i < lines.Count; i++)
 			{
 				manager.ParseLine(lines[i].Replace("\"", ""), i - 3);
