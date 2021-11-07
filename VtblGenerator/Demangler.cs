@@ -183,7 +183,7 @@ namespace arookas
 			else
 			{
 				bool end = false;
-				List<ComponentInfo> components = new List<ComponentInfo>(10);
+				List<ComponentInfo> components = new List<ComponentInfo>(20);
 
 				do
 				{
