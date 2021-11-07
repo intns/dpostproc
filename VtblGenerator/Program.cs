@@ -76,36 +76,95 @@ namespace VtblGenerator
 
 		public void Output()
 		{
+			List<string> symbolString = new();
+			int maxWidth = 0;
+
 			foreach (var structure in _DerivativeStructs)
 			{
-				OutputStructure(structure);
-			}
-			OutputStructure(_ParentStruct);
-		}
+				foreach (var qual in structure._Qualifiers)
+				{
+					Console.WriteLine($"namespace {qual} {{");
+				}
 
-		public static void OutputStructure(Structure structure)
-		{
-			foreach (var qual in structure._Qualifiers)
+				Console.WriteLine($"struct {structure._Name} {{");
+
+				// HACK: pad out virtual functions to get the offset generation correctly
+				for (int i = 0; i < structure._Symbols.Count; i++)
+				{
+					if (structure._Symbols[i]._Offset != i * 4)
+					{
+						structure._Symbols.Insert(i, new(i * 4, null, null));
+					}
+				}
+
+				symbolString = new();
+				maxWidth = 0;
+				for (int i = 0; i < structure._Symbols.Count; i++)
+				{
+					FunctionSymbol symbol = structure._Symbols[i];
+
+					string symbolStr = symbol.ToString();
+					if (maxWidth < symbolStr.Length)
+					{
+						maxWidth = symbolStr.Length + 1;
+					}
+					symbolString.Add(symbolStr);
+				}
+
+				for (int i = 0; i < symbolString.Count; i++)
+				{
+					Console.Write($"\t{symbolString[i]}");
+
+					for (int j = 0; j < maxWidth - symbolString[i].Length; j++)
+					{
+						Console.Write(" ");
+					}
+
+					Console.WriteLine($"// _{structure._Symbols[i]._Offset.ToString("X2").ToUpper()}");
+				}
+				Console.WriteLine("};");
+
+				for (int i = structure._Qualifiers.Count - 1; i >= 0; i--)
+				{
+					string qual = structure._Qualifiers[i];
+					Console.WriteLine($"}} // namespace {qual}");
+				}
+				Console.WriteLine();
+			}
+
+			// MAIN STRUCTURE
+			foreach (var qual in _ParentStruct._Qualifiers)
 			{
 				Console.WriteLine($"namespace {qual} {{");
 			}
 
-			Console.WriteLine($"struct {structure._Name} {{");
+			Console.Write($"struct {_ParentStruct._Name}");
 
-			// HACK: pad out virtual functions to get the offset generation correctly
-			for (int i = 0; i < structure._Symbols.Count; i++)
+			if (_DerivativeStructs.Count != 0)
 			{
-				if (structure._Symbols[i]._Offset != i * 4)
+				Console.Write($" : public {_DerivativeStructs[0]._Name}");
+				for (int i = 1; i < _DerivativeStructs.Count; i++)
 				{
-					structure._Symbols.Insert(i, new(i * 4, null, null));
+					Console.Write($", public {_DerivativeStructs[i]._Name}");
 				}
 			}
 
-			List<string> symbolString = new();
-			int maxWidth = 0;
-			for (int i = 0; i < structure._Symbols.Count; i++)
+			Console.WriteLine(" {");
+
+			// HACK: pad out virtual functions to get the offset generation correctly
+			for (int i = 0; i < _ParentStruct._Symbols.Count; i++)
 			{
-				FunctionSymbol symbol = structure._Symbols[i];
+				if (_ParentStruct._Symbols[i]._Offset != i * 4)
+				{
+					_ParentStruct._Symbols.Insert(i, new(i * 4, null, null));
+				}
+			}
+
+			symbolString = new();
+			maxWidth = 0;
+			for (int i = 0; i < _ParentStruct._Symbols.Count; i++)
+			{
+				FunctionSymbol symbol = _ParentStruct._Symbols[i];
 
 				string symbolStr = symbol.ToString();
 				if (maxWidth < symbolStr.Length)
@@ -124,14 +183,16 @@ namespace VtblGenerator
 					Console.Write(" ");
 				}
 
-				Console.WriteLine($"// _{structure._Symbols[i]._Offset.ToString("X2").ToUpper()}");
+				Console.WriteLine($"// _{_ParentStruct._Symbols[i]._Offset.ToString("X2").ToUpper()}");
 			}
 			Console.WriteLine("};");
 
-			foreach (var qual in structure._Qualifiers)
+			for (int i = _ParentStruct._Qualifiers.Count - 1; i >= 0; i--)
 			{
-				Console.WriteLine($"}} // namespace {qual}\n");
+				string qual = _ParentStruct._Qualifiers[i];
+				Console.WriteLine($"}} // namespace {qual}");
 			}
+			Console.WriteLine();
 		}
 	}
 
@@ -224,7 +285,6 @@ namespace VtblGenerator
 
 			// Get the class the virtual table is a part of
 			string mainClassName = Demangler.Demangle(lines[0].Replace(":", "")).Replace("::__vt", "");
-			Console.WriteLine(mainClassName);
 
 			// Clean the lines to remove the .4byte
 			for (int i = 0; i < lines.Count; i++)
