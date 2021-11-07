@@ -120,10 +120,10 @@ namespace VtblGenerator
 					{
 						foreach (var parentSymbol in _ParentStruct._Symbols)
 						{
-							if (parentSymbol._Offset == i)
+							if (parentSymbol._Offset == i * 4)
 							{
 								structure._Symbols.Insert(i, new(parentSymbol._Offset, parentSymbol._Qualifiers, parentSymbol._Name));
-								if (parentSymbol._Name.Contains("~"))
+								if (parentSymbol._Name != null && parentSymbol._Name.Contains("~"))
 								{
 									structure._Symbols[i]._Name = "~" + structure._Name + "()";
 								}
