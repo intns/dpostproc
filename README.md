@@ -28,7 +28,7 @@ struct CNode {
 
 namespace Game {
 struct EnemyAnimKeyEvent : public CNode {
-        virtual ~CNode();             // _00
+        virtual ~EnemyAnimKeyEvent(); // _00
         virtual void getChildCount(); // _04
 
         // _00 VTBL
