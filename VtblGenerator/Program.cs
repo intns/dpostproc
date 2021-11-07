@@ -147,7 +147,7 @@ namespace VtblGenerator
 			Console.WriteLine("};");
 
 
-			for (int i = 0; i < _QualifiedNames.Count - 1; i++)
+			for (int i = _QualifiedNames.Count - 2; i >= 0; i--)
 			{
 				Console.WriteLine($"}} // namespace {_QualifiedNames[i]}");
 			}
