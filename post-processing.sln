@@ -9,6 +9,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Shifter", "Shifter\Shifter.
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CommonDecompFiller", "CommonDecompFiller\CommonDecompFiller.csproj", "{9895F962-090B-42D3-A57D-DA2ABD047F3C}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UndefinedGenerator", "UndefinedGenerator\UndefinedGenerator.csproj", "{863224A6-21B4-4B9F-9F92-C127CAB10151}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HeaderVtblGenerator", "HeaderVtblGenerator\HeaderVtblGenerator.csproj", "{09C9F6A6-9692-4A55-92D7-9E892991B1EF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +31,14 @@ Global
 		{9895F962-090B-42D3-A57D-DA2ABD047F3C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9895F962-090B-42D3-A57D-DA2ABD047F3C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9895F962-090B-42D3-A57D-DA2ABD047F3C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{863224A6-21B4-4B9F-9F92-C127CAB10151}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{863224A6-21B4-4B9F-9F92-C127CAB10151}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{863224A6-21B4-4B9F-9F92-C127CAB10151}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{863224A6-21B4-4B9F-9F92-C127CAB10151}.Release|Any CPU.Build.0 = Release|Any CPU
+		{09C9F6A6-9692-4A55-92D7-9E892991B1EF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{09C9F6A6-9692-4A55-92D7-9E892991B1EF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{09C9F6A6-9692-4A55-92D7-9E892991B1EF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{09C9F6A6-9692-4A55-92D7-9E892991B1EF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,6 +1,7 @@
 ﻿using arookas;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 
 namespace VtblGenerator
@@ -79,14 +80,29 @@ namespace VtblGenerator
 			List<string> symbolString;
 			int maxWidth;
 
+			string filePath = string.Join("/", _ParentStruct._Qualifiers) + "/" + _ParentStruct._Name + ".h";
+			Directory.CreateDirectory(Directory.GetCurrentDirectory() + "/out/");
+			string outFolder = Directory.GetCurrentDirectory() + "/out/";
+			for (int i = 0; i < _ParentStruct._Qualifiers.Count; i++)
+			{
+				outFolder += _ParentStruct._Qualifiers[i] + "/";
+				Directory.CreateDirectory(outFolder);
+			}
+			using StreamWriter newFile = File.CreateText(Directory.GetCurrentDirectory() + "/out/" + filePath);
+
+			string ifdef = filePath.Replace("/", "_").Replace(".h", "").ToUpper() + "_H";
+			ifdef = ifdef.TrimStart('_');
+			newFile.WriteLine($"#ifndef _{ifdef}");
+			newFile.WriteLine($"#define _{ifdef}\n");
+
 			foreach (Structure structure in _DerivativeStructs)
 			{
 				foreach (string qual in structure._Qualifiers)
 				{
-					Console.WriteLine($"namespace {qual} {{");
+					newFile.WriteLine($"namespace {qual} {{");
 				}
 
-				Console.WriteLine($"struct {structure._Name} {{");
+				newFile.WriteLine($"struct {structure._Name} {{");
 
 				// FIX: pad out virtual functions to get the offset generation correctly
 				for (int i = 0; i < structure._Symbols.Count; i++)
@@ -135,45 +151,45 @@ namespace VtblGenerator
 
 				for (int i = 0; i < symbolString.Count; i++)
 				{
-					Console.Write($"\t{symbolString[i]}");
+					newFile.Write($"\t{symbolString[i]}");
 
 					for (int j = 0; j < maxWidth - symbolString[i].Length; j++)
 					{
-						Console.Write(" ");
+						newFile.Write(" ");
 					}
 
-					Console.WriteLine($"// _{structure._Symbols[i]._Offset.ToString("X2").ToUpper()}");
+					newFile.WriteLine($"// _{structure._Symbols[i]._Offset.ToString("X2").ToUpper()}");
 				}
 
-				Console.WriteLine("\n\t// _00 VTBL\n");
-				Console.WriteLine("};");
+				newFile.WriteLine("\n\t// _00 VTBL\n");
+				newFile.WriteLine("};");
 
 				for (int i = structure._Qualifiers.Count - 1; i >= 0; i--)
 				{
 					string qual = structure._Qualifiers[i];
-					Console.WriteLine($"}} // namespace {qual}");
+					newFile.WriteLine($"}} // namespace {qual}");
 				}
-				Console.WriteLine();
+				newFile.WriteLine();
 			}
 
 			// MAIN STRUCTURE
 			foreach (string qual in _ParentStruct._Qualifiers)
 			{
-				Console.WriteLine($"namespace {qual} {{");
+				newFile.WriteLine($"namespace {qual} {{");
 			}
 
-			Console.Write($"struct {_ParentStruct._Name}");
+			newFile.Write($"struct {_ParentStruct._Name}");
 
 			if (_DerivativeStructs.Count != 0)
 			{
-				Console.Write($" : public {_DerivativeStructs[0]._Name}");
+				newFile.Write($" : public {_DerivativeStructs[0]._Name}");
 				for (int i = 1; i < _DerivativeStructs.Count; i++)
 				{
-					Console.Write($", public {_DerivativeStructs[i]._Name}");
+					newFile.Write($", public {_DerivativeStructs[i]._Name}");
 				}
 			}
 
-			Console.WriteLine(" {");
+			newFile.WriteLine(" {");
 
 			// HACK: pad out virtual functions to get the offset generation correctly
 			for (int i = 0; i < _ParentStruct._Symbols.Count; i++)
@@ -200,25 +216,27 @@ namespace VtblGenerator
 
 			for (int i = 0; i < symbolString.Count; i++)
 			{
-				Console.Write($"\t{symbolString[i]}");
+				newFile.Write($"\t{symbolString[i]}");
 
 				for (int j = 0; j < maxWidth - symbolString[i].Length; j++)
 				{
-					Console.Write(" ");
+					newFile.Write(" ");
 				}
 
-				Console.WriteLine($"// _{_ParentStruct._Symbols[i]._Offset.ToString("X2").ToUpper()}");
+				newFile.WriteLine($"// _{_ParentStruct._Symbols[i]._Offset.ToString("X2").ToUpper()}");
 			}
 
-			Console.WriteLine("\n\t// _00 VTBL\n");
-			Console.WriteLine("};");
+			newFile.WriteLine("\n\t// _00 VTBL\n");
+			newFile.WriteLine("};");
 
 			for (int i = _ParentStruct._Qualifiers.Count - 1; i >= 0; i--)
 			{
 				string qual = _ParentStruct._Qualifiers[i];
-				Console.WriteLine($"}} // namespace {qual}");
+				newFile.WriteLine($"}} // namespace {qual}");
 			}
-			Console.WriteLine();
+			newFile.WriteLine();
+
+			newFile.WriteLine("#endif");
 		}
 	}
 
@@ -295,44 +313,49 @@ namespace VtblGenerator
 
 	internal class Program
 	{
-		private static void Main()
+		private static void OutputVtbl(List<string> vtblLines)
 		{
-			Console.WriteLine("[INPUT START]");
-			List<string> lines = new();
-			string currentInp = Console.ReadLine();
-			while (!string.IsNullOrEmpty(currentInp))
-			{
-				lines.Add(currentInp);
-				currentInp = Console.ReadLine();
-			}
-			Console.WriteLine("[INPUT END]");
-			if (lines.Count == 0)
-			{
-				Console.WriteLine("Copy and paste __vt__ definition from an .s file!");
-				return;
-			}
-
-			Console.WriteLine("[OUTPUT START]");
-
 			// Remove empty lines
-			lines = lines.Where(s => !string.IsNullOrEmpty(s)).ToList();
+			vtblLines = vtblLines.Where(s => !string.IsNullOrEmpty(s)).ToList();
 
 			// Get the class the virtual table is a part of
-			string mainClassName = Demangler.Demangle(lines[0].Replace(":", "")).Replace("::__vt", "");
+			string mainClassName = Demangler.Demangle(vtblLines[0].Replace(":", "")).Replace("::__vt", "");
 
-			// Clean the lines to remove the .4byte
-			for (int i = 0; i < lines.Count; i++)
+			// Clean the vtblLines to remove the .4byte
+			for (int i = 0; i < vtblLines.Count; i++)
 			{
-				lines[i] = lines[i].Replace(".4byte", "").Trim();
+				vtblLines[i] = vtblLines[i].Replace(".4byte", "").Trim();
 			}
 
-			Manager manager = new(lines[0]);
-			for (int i = 3; i < lines.Count; i++)
+			Manager manager = new(vtblLines[0]);
+			for (int i = 3; i < vtblLines.Count; i++)
 			{
-				manager.ParseLine(lines[i].Replace("\"", ""), i - 3);
+				manager.ParseLine(vtblLines[i].Replace("\"", ""), i - 3);
 			}
 			manager.Output();
-			Console.WriteLine("[OUTPUT END]");
+		}
+
+		private static void Main()
+		{
+			string[] files = Directory.GetFiles(Console.ReadLine(), "*.s", SearchOption.AllDirectories);
+
+			foreach (var file in files)
+			{
+				string[] fileContents = File.ReadAllLines(file);
+				for (int i = 0; i < fileContents.Length; i++)
+				{
+					if (fileContents[i].StartsWith("__vt__"))
+					{
+						List<string> lines = new List<string>();
+						lines.Add(fileContents[i]);
+						while (fileContents[++i].Trim().StartsWith(".4byte"))
+						{
+							lines.Add(fileContents[i]);
+						}
+						OutputVtbl(lines);
+					}
+				}
+			}
 		}
 	}
 }
