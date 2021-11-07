@@ -43,13 +43,8 @@ namespace Shifter
 		private static void Main(string[] args)
 		{
 			Console.Write("Input the ASM directory of your project: ");
-			var dirs = Directory.GetDirectories(Console.ReadLine());
 			List<string> asmFiles = new List<string>();
-			foreach (var dir in dirs)
-			{
-				asmFiles.AddRange(Directory.GetFiles(dir, "*.s", SearchOption.AllDirectories));
-			}
-
+			asmFiles.AddRange(Directory.GetFiles(Console.ReadLine(), "*.s", SearchOption.AllDirectories));
 
 			RamFs fs = new();
 			fs.Populate(asmFiles.ToArray());
