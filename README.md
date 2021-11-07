@@ -18,22 +18,21 @@ __vt__Q24Game17EnemyAnimKeyEvent:
 Output:
 
 ```cpp
-// NOTE: THE SCOPE AND FUNCTION OFFSETS OF ALL CLASSES BESIDES THE ONE YOU INPUTTED MAY BE WRONG!
+struct CNode {
+        virtual void _00() = 0;       // _00
+        virtual void getChildCount(); // _04
 
-namespace Game { // Unsure if namespace or structure!
-struct CNode
-{
-        virtual void getChildCount(); // _00
+        // _00 VTBL
 
-        // _00, VTBL
 };
 
-struct EnemyAnimKeyEvent : public CNode
-{
-        ~EnemyAnimKeyEvent()          // _00, from Game::
-        virtual void getChildCount(); // _04, from CNode::
+namespace Game {
+struct EnemyAnimKeyEvent : public CNode {
+        virtual ~EnemyAnimKeyEvent(); // _00
+        virtual void getChildCount(); // _04
 
-        // _00, VTBL
+        // _00 VTBL
+
 };
 } // namespace Game
 ```
