@@ -37,7 +37,7 @@ struct EnemyAnimKeyEvent : public CNode {
 } // namespace Game
 ```
 
-The CNode class is not within the Game namespace, and as such this inconsistent scoping must be accounted for when implementing the tool's output.
+The CNode class is not within the Game namespace, and as such this inconsistent scoping is accounted for when implementing the tool's output.
 
 ## Shifter
 This tool recognises and fixes hardcoded addresses in .s files, this "fix" is a simple annotation using a label and then referencing the label where the address is found.
