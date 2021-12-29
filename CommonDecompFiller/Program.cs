@@ -6,9 +6,9 @@ using System.Linq;
 
 namespace CommonDecompFiller
 {
-	class Program
+	static class Filler
 	{
-		static void EncapsulateNamespace(string name, ref List<string> lines)
+		static private void EncapsulateNamespace(string name, ref List<string> lines)
 		{
 			bool insideNamespace = false;
 			for (int i = 0; i < lines.Count; i++)
@@ -82,7 +82,7 @@ namespace CommonDecompFiller
 			}
 		}
 
-		static void HandleSimpleStorePattern(string version, int i, ref List<string> lines)
+		static private void HandleSimpleStorePattern(string version, int i, ref List<string> lines)
 		{
 			if (i + 3 < lines.Count
 	&& lines[i + 1].Contains("li")
@@ -152,7 +152,7 @@ namespace CommonDecompFiller
 
 		}
 
-		static void HandleSimpleArgStorePattern(string version, int i, ref List<string> lines)
+		static private void HandleSimpleArgStorePattern(string version, int i, ref List<string> lines)
 		{
 			if (i + 2 < lines.Count
 								&& lines[i + 1].Contains(version)
@@ -199,7 +199,7 @@ namespace CommonDecompFiller
 			}
 		}
 
-		static void Main(string[] args)
+		static public void Run()
 		{
 			Console.WriteLine("Input known namespace names (leave blank and press enter if none):");
 			string input = Console.ReadLine();
@@ -238,7 +238,7 @@ namespace CommonDecompFiller
 						{
 							string endLine = lines[i].Substring(0, end);
 							string[] scopeSplit = endLine.Split(seperators, StringSplitOptions.RemoveEmptyEntries);
-							if (scopeSplit[^1] == scopeSplit[^2] || scopeSplit[^1] == "~" + scopeSplit[^2])
+							if (scopeSplit.Length > 1 && (scopeSplit[^1] == scopeSplit[^2] || scopeSplit[^1] == "~" + scopeSplit[^2]))
 							{
 								lines[i] = lines[i].Remove(0, 5);
 							}
@@ -372,10 +372,10 @@ namespace CommonDecompFiller
 					addTypes = true;
 				}
 
-				if (addTypes && !lines.Contains("#include \"types.h\""))
+				/*if (addTypes && !lines.Contains("#include \"types.h\""))
 				{
 					lines.Insert(0, "#include \"types.h\"\n");
-				}
+				}*/
 
 				Console.WriteLine(file);
 				File.WriteAllLines(file, lines.ToArray());
