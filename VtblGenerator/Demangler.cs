@@ -30,6 +30,11 @@ namespace arookas
 							output.Append(", ");
 							break;
 						}
+					case '\0':
+						{
+							end = true;
+							break;
+						}
 				}
 			} while (!end);
 
@@ -63,6 +68,7 @@ namespace arookas
 					case ComponentType.Void: output.Append("void"); break;
 					case ComponentType.Bool: output.Append("bool"); break;
 					case ComponentType.Char: output.Append("char"); break;
+					case ComponentType.WChar: output.Append("wchar_t"); break;
 					case ComponentType.Short: output.Append("short"); break;
 					case ComponentType.Int: output.Append("int"); break;
 					case ComponentType.Long: output.Append("long"); break;
@@ -165,7 +171,8 @@ namespace arookas
 				{
 					int start = input.Position;
 
-					while ((input.Position - start) < length)
+					while ((input.Position - start) < length
+						&& input.Position != input.Length)
 					{
 						c = input.Read();
 
@@ -183,11 +190,16 @@ namespace arookas
 			else
 			{
 				bool end = false;
-				List<ComponentInfo> components = new List<ComponentInfo>(20);
+				List<ComponentInfo> components = new List<ComponentInfo>(50);
 
 				do
 				{
 					c = input.Read();
+
+					if (c == '\0')
+					{
+						end = true;
+					}
 
 					switch (c)
 					{
@@ -245,6 +257,12 @@ namespace arookas
 						case 'c':
 							{
 								components.Insert(0, new ComponentInfo(ComponentType.Char));
+								end = true;
+								break;
+							}
+						case 'w':
+							{
+								components.Insert(0, new ComponentInfo(ComponentType.WChar));
 								end = true;
 								break;
 							}
@@ -308,7 +326,7 @@ namespace arookas
 								StringBuilder prms = new StringBuilder(500);
 								StringBuilder ret = new StringBuilder(500);
 
-								while (input.Peek() != '_')
+								for (char nc = input.Peek(); nc != '_' && nc != '\0'; nc = input.Peek())
 								{
 									if (prms.Length > 0)
 									{
@@ -429,7 +447,7 @@ namespace arookas
 		public static string Demangle(string symbol)
 		{
 			StringStream input = new StringStream(symbol);
-			StringBuilder output = new StringBuilder(500);
+			StringBuilder output = new StringBuilder(1000);
 
 			string name = DemangleName(input);
 			string type = null;
@@ -606,6 +624,7 @@ namespace arookas
 			Void,
 			Bool,
 			Char,
+			WChar,
 			Short,
 			Int,
 			Long,
