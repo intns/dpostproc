@@ -24,19 +24,27 @@ namespace VtblGenerator
 				return;
 			}
 
+			// Demangle the symbol
 			string dirtyFunc = Demangler.Demangle(line);
+
 			// Remove the parameters to not confuse the qualifier splitting system
 			string cleanedFunc = dirtyFunc.Substring(0, dirtyFunc.IndexOf("("));
+
+			// Split the symbol into its constituent parts - function name and scopes
 			List<string> qualifiers = cleanedFunc.Split("::", StringSplitOptions.RemoveEmptyEntries).ToList();
+
+			// Remove the function, only focus on the scopes / qualifiers
 			qualifiers.RemoveAt(qualifiers.Count - 1);
 
+			// Check if the scope matches the class we are making a definition for
 			if (_ParentStruct._Name == qualifiers[^1])
 			{
+				// Add the function to the parent structure
 				_ParentStruct._Symbols.Add(new FunctionSymbol(idx * 4, qualifiers, dirtyFunc));
 			}
-			// Ignore thunk functions
 			else if (cleanedFunc.Contains("@"))
 			{
+				// Ignore thunk functions
 				return;
 			}
 			else
@@ -70,7 +78,10 @@ namespace VtblGenerator
 					_DerivativeStructs.Add(structure);
 				}
 
-				_ParentStruct._Symbols.Add(new(idx * 4, qualifiers, dirtyFunc));
+				if (qualifiers[^1] == _ParentStruct._Name)
+				{
+					_ParentStruct._Symbols.Add(new(idx * 4, qualifiers, dirtyFunc));
+				}
 			}
 		}
 
@@ -178,15 +189,6 @@ namespace VtblGenerator
 			}
 
 			Console.WriteLine(" {");
-
-			// HACK: pad out virtual functions to get the offset generation correctly
-			for (int i = 0; i < _ParentStruct._Symbols.Count; i++)
-			{
-				if (_ParentStruct._Symbols[i]._Offset != i * 4)
-				{
-					_ParentStruct._Symbols.Insert(i, new(i * 4, null, null));
-				}
-			}
 
 			symbolString = new();
 			maxWidth = 0;
@@ -317,6 +319,11 @@ namespace VtblGenerator
 			}
 
 			Console.WriteLine("[OUTPUT START]");
+
+			if (lines[0].Contains(".global"))
+			{
+				lines.RemoveAt(0);
+			}
 
 			// Remove empty lines
 			lines = lines.Where(s => !string.IsNullOrEmpty(s)).ToList();
