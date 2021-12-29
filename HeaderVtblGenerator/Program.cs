@@ -10,6 +10,7 @@ namespace VtblGenerator
 	{
 		private readonly Structure _ParentStruct = new();
 		private readonly List<Structure> _DerivativeStructs = new();
+		public List<string> _OriginalVtbl = new();
 
 		public Manager(string vtblMangled)
 		{
@@ -94,6 +95,13 @@ namespace VtblGenerator
 			ifdef = ifdef.TrimStart('_');
 			newFile.WriteLine($"#ifndef _{ifdef}");
 			newFile.WriteLine($"#define _{ifdef}\n");
+
+			newFile.WriteLine("/*");
+			foreach (var vtblLine in _OriginalVtbl)
+			{
+				newFile.WriteLine("\t" + vtblLine.Trim());
+			}
+			newFile.WriteLine("*/\n");
 
 			foreach (Structure structure in _DerivativeStructs)
 			{
@@ -310,6 +318,9 @@ namespace VtblGenerator
 	{
 		private static void OutputVtbl(List<string> vtblLines)
 		{
+			Manager manager = new(vtblLines[0]);
+			manager._OriginalVtbl = vtblLines.ToArray().ToList();
+
 			// Remove empty lines
 			vtblLines = vtblLines.Where(s => !string.IsNullOrEmpty(s)).ToList();
 
@@ -322,7 +333,6 @@ namespace VtblGenerator
 				vtblLines[i] = vtblLines[i].Replace(".4byte", "").Trim();
 			}
 
-			Manager manager = new(vtblLines[0]);
 			for (int i = 3; i < vtblLines.Count; i++)
 			{
 				manager.ParseLine(vtblLines[i].Replace("\"", ""), i - 3);
