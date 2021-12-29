@@ -195,15 +195,6 @@ namespace VtblGenerator
 
 			newFile.WriteLine(" {");
 
-			// HACK: pad out virtual functions to get the offset generation correctly
-			for (int i = 0; i < _ParentStruct._Symbols.Count; i++)
-			{
-				if (_ParentStruct._Symbols[i]._Offset != i * 4)
-				{
-					_ParentStruct._Symbols.Insert(i, new(i * 4, null, null));
-				}
-			}
-
 			symbolString = new();
 			maxWidth = 0;
 			for (int i = 0; i < _ParentStruct._Symbols.Count; i++)
