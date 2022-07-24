@@ -22,19 +22,21 @@ namespace VtblGenerator
 		{
 			if (line == "0")
 			{
-				_ParentStruct._Symbols.Add(new(idx * 4, null, null));
+				_ParentStruct._Symbols.Add(new(8 + (idx * 4), null, null));
 				return;
 			}
 
 			string dirtyFunc = Demangler.Demangle(line);
+
 			// Remove the parameters to not confuse the qualifier splitting system
-			string cleanedFunc = dirtyFunc.Substring(0, dirtyFunc.IndexOf("("));
+			string cleanedFunc = dirtyFunc[..dirtyFunc.IndexOf("(")];
+
 			List<string> qualifiers = cleanedFunc.Split("::", StringSplitOptions.RemoveEmptyEntries).ToList();
 			qualifiers.RemoveAt(qualifiers.Count - 1);
 
 			if (_ParentStruct._Name == qualifiers[^1])
 			{
-				_ParentStruct._Symbols.Add(new FunctionSymbol(idx * 4, qualifiers, dirtyFunc));
+				_ParentStruct._Symbols.Add(new FunctionSymbol(8 + (idx * 4), qualifiers, dirtyFunc));
 			}
 			// Ignore thunk functions
 			else if (cleanedFunc.Contains("@"))
@@ -50,7 +52,7 @@ namespace VtblGenerator
 				{
 					if (structure._Name == qualifiers[^1])
 					{
-						structure._Symbols.Add(new FunctionSymbol(idx * 4, qualifiers, dirtyFunc));
+						structure._Symbols.Add(new FunctionSymbol(8 + (idx * 4), qualifiers, dirtyFunc));
 						found = true;
 						break;
 					}
@@ -68,11 +70,11 @@ namespace VtblGenerator
 						structure._Qualifiers.Add(qualifiers[i]);
 					}
 
-					structure._Symbols.Add(new FunctionSymbol(idx * 4, qualifiers, dirtyFunc));
+					structure._Symbols.Add(new FunctionSymbol(8 + (idx * 4), qualifiers, dirtyFunc));
 					_DerivativeStructs.Add(structure);
 				}
 
-				_ParentStruct._Symbols.Add(new(idx * 4, qualifiers, dirtyFunc));
+				//_ParentStruct._Symbols.Add(new(8 + (idx * 4), qualifiers, dirtyFunc));
 			}
 		}
 
@@ -115,7 +117,7 @@ namespace VtblGenerator
 				// FIX: pad out virtual functions to get the offset generation correctly
 				for (int i = 0; i < structure._Symbols.Count; i++)
 				{
-					if (structure._Symbols[i]._Offset == i * 4)
+					if (structure._Symbols[i]._Offset == 8 + (i * 4))
 					{
 						continue;
 					}
@@ -128,7 +130,7 @@ namespace VtblGenerator
 					{
 						foreach (var parentSymbol in _ParentStruct._Symbols)
 						{
-							if (parentSymbol._Offset == i * 4)
+							if (parentSymbol._Offset == 8 + (i * 4))
 							{
 								structure._Symbols.Insert(i, new(parentSymbol._Offset, parentSymbol._Qualifiers, parentSymbol._Name));
 								if (parentSymbol._Name != null && parentSymbol._Name.Contains("~"))
@@ -143,7 +145,7 @@ namespace VtblGenerator
 
 					if (!found)
 					{
-						structure._Symbols.Insert(i, new(i * 4, null, null));
+						structure._Symbols.Insert(i, new(8 + (i * 4), null, null));
 					}
 				}
 
