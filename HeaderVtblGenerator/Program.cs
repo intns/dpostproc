@@ -17,68 +17,121 @@ namespace VtblGenerator
 			_ParentStruct.SetFromVtbl(Demangler.Demangle(vtblMangled).Replace("::__vt", ""));
 		}
 
-		// First line of the vtable (excluding the first 2 "0"'s) should have index 0
-		public void ParseLine(string line, int idx)
+		private void AddToParentStruct(int idx, List<string>? qualifiers, string? dirtyFunc, bool? isWeak)
 		{
+			_ParentStruct._Symbols.Add(new FunctionSymbol(idx, qualifiers, dirtyFunc, isWeak));
+		}
+
+		private void AddToDerivativeStruct(int idx, List<string>? qualifiers, string? dirtyFunc, bool? isWeak)
+		{
+			// If the function isn't from the parent structure, then we can create a new structure
+			// or if the structure exists, add to it
+			bool found = false;
+			foreach (Structure s in _DerivativeStructs)
+			{
+				if (s._Name == qualifiers[^1])
+				{
+					s._Symbols.Add(new FunctionSymbol(idx, qualifiers, dirtyFunc, isWeak));
+					found = true;
+					break;
+				}
+			}
+
+			if (found)
+			{
+				return;
+			}
+
+			Structure structure = new()
+			{
+				_Name = qualifiers[^1]
+			};
+
+			for (int i = 0; i < qualifiers.Count - 1; i++)
+			{
+				structure._Qualifiers.Add(qualifiers[i]);
+			}
+
+			structure._Symbols.Add(new FunctionSymbol(idx, qualifiers, dirtyFunc, isWeak));
+			_DerivativeStructs.Add(structure);
+		}
+
+		// First line of the vtable (excluding the first 2 "0"'s) should have index 0
+		public void ParseLine(string line, int idx, ref List<string> linkMapSrc)
+		{
+			// Add pure virtual function
 			if (line == "0")
 			{
-				_ParentStruct._Symbols.Add(new(8 + (idx * 4), null, null));
+				AddToParentStruct(8 + (idx * 4), null, null, null);
 				return;
+			}
+			// Ignore thunk functions
+			else if (line.Contains("@"))
+			{
+				return;
+			}
+
+			// Check the linker map to see if the function is weak
+			bool isWeak = false;
+			for (int i = 0; i < linkMapSrc.Count; i++)
+			{
+				string lm = linkMapSrc[i];
+				if (lm.Contains(line) && lm.Contains("func,weak"))
+				{
+					isWeak = true;
+					break;
+				}
 			}
 
 			string dirtyFunc = Demangler.Demangle(line);
 
 			// Remove the parameters to not confuse the qualifier splitting system
+			// and then remove the name from the qualifiers
 			string cleanedFunc = dirtyFunc[..dirtyFunc.IndexOf("(")];
-
 			List<string> qualifiers = cleanedFunc.Split("::", StringSplitOptions.RemoveEmptyEntries).ToList();
 			qualifiers.RemoveAt(qualifiers.Count - 1);
 
-			if (_ParentStruct._Name == qualifiers[^1])
+			bool inParentStruct = true;
+
+			// If the amount of qualifiers matches, then we can test it
+			if (qualifiers.Count == (_ParentStruct._Qualifiers.Count+1))
 			{
-				_ParentStruct._Symbols.Add(new FunctionSymbol(8 + (idx * 4), qualifiers, dirtyFunc));
-			}
-			// Ignore thunk functions
-			else if (cleanedFunc.Contains("@"))
-			{
-				return;
-			}
-			else
-			{
-				// If the function isn't from the parent structure, then we can create a new structure
-				// or if the structure exists, add to it
-				bool found = false;
-				foreach (Structure structure in _DerivativeStructs)
+				// Check every qualifier 
+				for (int i = 0; i < _ParentStruct._Qualifiers.Count; i++)
 				{
-					if (structure._Name == qualifiers[^1])
+					if (_ParentStruct._Qualifiers[i] != qualifiers[i])
 					{
-						structure._Symbols.Add(new FunctionSymbol(8 + (idx * 4), qualifiers, dirtyFunc));
-						found = true;
+						inParentStruct = false;
 						break;
 					}
 				}
 
-				if (!found)
+				if (inParentStruct)
 				{
-					Structure structure = new()
-					{
-						_Name = qualifiers[^1]
-					};
-
-					for (int i = 0; i < qualifiers.Count - 1; i++)
-					{
-						structure._Qualifiers.Add(qualifiers[i]);
-					}
-
-					structure._Symbols.Add(new FunctionSymbol(8 + (idx * 4), qualifiers, dirtyFunc));
-					_DerivativeStructs.Add(structure);
+					// Check if the name matches, if so, then we've found it!
+					inParentStruct = _ParentStruct._Name == qualifiers[^1];
 				}
+			}
+			else
+			{
+				// If not, we're not a virtual function of the parent class
+				inParentStruct = false;
+			}
 
-				//_ParentStruct._Symbols.Add(new(8 + (idx * 4), qualifiers, dirtyFunc));
+			// Virtual tables are always offset by 8, and (idx * 4) because
+			// the offsets are 32 bit integers (4 bytes)
+			int trueOffset = 8 + (idx * 4);
+			if (inParentStruct)
+			{
+				AddToParentStruct(trueOffset, qualifiers, dirtyFunc, isWeak);
+			}
+			else
+			{
+				AddToDerivativeStruct(trueOffset, qualifiers, dirtyFunc, isWeak);
 			}
 		}
 
-		public void Output()
+		public void Output(ref List<string> symbolMapSrc)
 		{
 			List<string> symbolString;
 			int maxWidth;
@@ -122,30 +175,24 @@ namespace VtblGenerator
 						continue;
 					}
 
-					// FIX: thanks JoshuaMK for reminding me that single inheritance classes
-					// share functions 100% from before the last member of the vtbl
 					bool found = false;
-
-					if (_DerivativeStructs.Count == 1)
+					foreach (var parentSymbol in _ParentStruct._Symbols)
 					{
-						foreach (var parentSymbol in _ParentStruct._Symbols)
+						if (parentSymbol._Offset == 8 + (i * 4))
 						{
-							if (parentSymbol._Offset == 8 + (i * 4))
+							structure._Symbols.Insert(i, new(parentSymbol._Offset, parentSymbol._Qualifiers, parentSymbol._Name, !string.IsNullOrEmpty(parentSymbol._Comments)));
+							if (parentSymbol._Name != null && parentSymbol._Name.Contains("~"))
 							{
-								structure._Symbols.Insert(i, new(parentSymbol._Offset, parentSymbol._Qualifiers, parentSymbol._Name));
-								if (parentSymbol._Name != null && parentSymbol._Name.Contains("~"))
-								{
-									structure._Symbols[i]._Name = "~" + structure._Name + "()";
-								}
-								found = true;
-								break;
+								structure._Symbols[i]._Name = "~" + structure._Name + "()";
 							}
+							found = true;
+							break;
 						}
 					}
 
 					if (!found)
 					{
-						structure._Symbols.Insert(i, new(8 + (i * 4), null, null));
+						structure._Symbols.Insert(i, new(8 + (i * 4), null, null, null));
 					}
 				}
 
@@ -172,10 +219,9 @@ namespace VtblGenerator
 						newFile.Write(" ");
 					}
 
-					newFile.WriteLine($"// _{structure._Symbols[i]._Offset.ToString("X2").ToUpper()}");
+					newFile.WriteLine($"{structure._Symbols[i].GetComments()}");
 				}
 
-				newFile.WriteLine("\n\t// _00 VTBL\n");
 				newFile.WriteLine("};");
 
 				for (int i = structure._Qualifiers.Count - 1; i >= 0; i--)
@@ -228,10 +274,73 @@ namespace VtblGenerator
 					newFile.Write(" ");
 				}
 
-				newFile.WriteLine($"// _{_ParentStruct._Symbols[i]._Offset.ToString("X2").ToUpper()}");
+				newFile.WriteLine($"{_ParentStruct._Symbols[i].GetComments()}");
 			}
 
-			newFile.WriteLine("\n\t// _00 VTBL\n");
+			newFile.WriteLine();
+
+			string qualifiedName = $"Q{1 + (_ParentStruct._Qualifiers.Count)}";
+			for (int i = 0; i < _ParentStruct._Qualifiers.Count; i++)
+			{
+				qualifiedName += _ParentStruct._Qualifiers[i].Length;
+				qualifiedName += _ParentStruct._Qualifiers[i];
+			}
+			qualifiedName += _ParentStruct._Name.Length;
+			qualifiedName += _ParentStruct._Name;
+
+			for (int i = 0; i < symbolMapSrc.Count; i++)
+			{
+				if (symbolMapSrc[i].Contains($"__{qualifiedName}"))
+				{
+					string[] line = symbolMapSrc[i].Split(new char[] { '\t', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+
+					//  0        1      2         3 4                               5            6
+					//  004149a0 0000b4 8041a060  4 read__12MapCollisionFR6Stream 	sysCommonU.a mapCollision.cpp
+					string function = Demangler.Demangle(line[4]);
+
+					bool exit = false;
+					foreach (var symbol in _ParentStruct._Symbols)
+					{
+						if (symbol._Name == function)
+						{
+							exit = true;
+							break;
+						}
+					}
+
+					if (exit)
+					{
+						continue;
+					}
+
+					int paramIdx = function.IndexOf("(");
+					if (paramIdx == -1)
+					{
+						continue;
+					}
+
+					string cleanedFunc = function[..paramIdx];
+					string[] qualifiers = cleanedFunc.Split("::", StringSplitOptions.RemoveEmptyEntries);
+
+					if (qualifiers[^1] == _ParentStruct._Name || qualifiers[^1] == "~" + _ParentStruct._Name)
+					{
+						string args = function[paramIdx..];
+						if (args == "()")
+						{
+							newFile.WriteLine("\t" + qualifiers[^1] + $"();");
+						}
+						else
+						{
+							newFile.WriteLine("\t" + qualifiers[^1] + $"{args};");
+						}
+					}
+					else
+					{
+						newFile.WriteLine("\tvoid " + qualifiers[^1] + function[paramIdx..] + ";");
+					}
+				}
+			}
+
 			newFile.WriteLine("};");
 
 			for (int i = _ParentStruct._Qualifiers.Count - 1; i >= 0; i--)
@@ -266,12 +375,13 @@ namespace VtblGenerator
 	internal class FunctionSymbol
 	{
 		public List<string> _Qualifiers = new();
-		public string _Name = null;
+		public string _Name = string.Empty;
 		public int _Offset = 0;
 		public bool _IsPureVirtual = false;
+		public string _Comments = string.Empty;
 
 #nullable enable
-		public FunctionSymbol(int offset, List<string>? qualifiers, string? name)
+		public FunctionSymbol(int offset, List<string>? qualifiers, string? name, bool? weakFunc)
 		{
 			if (name != null)
 			{
@@ -281,6 +391,11 @@ namespace VtblGenerator
 			{
 				_Qualifiers = qualifiers;
 			}
+			if (weakFunc != null)
+			{
+				_Comments = weakFunc.Value ? "(weak)" : "";
+			}
+
 			_Offset = offset;
 		}
 #nullable disable
@@ -289,7 +404,7 @@ namespace VtblGenerator
 		{
 			string output = "virtual ";
 
-			if (_Name != null)
+			if (!string.IsNullOrEmpty(_Name))
 			{
 				string name = _Name;
 				for (int i = 0; i < _Qualifiers.Count; i++)
@@ -312,13 +427,24 @@ namespace VtblGenerator
 				output += $"void _{_Offset.ToString("X2").ToUpper()}() = 0";
 			}
 
-			return output + ";";
+			return output + "; ";
+		}
+
+		public string GetComments()
+		{
+			string comments = "// _" + _Offset.ToString("X2").ToUpper();
+			if (_Comments != string.Empty)
+			{
+				comments += $" {_Comments}";
+			}
+
+			return comments;
 		}
 	}
 
 	internal class Program
 	{
-		private static void OutputVtbl(List<string> vtblLines)
+		private static void OutputVtbl(List<string> vtblLines, ref List<string> linkMapLines, ref List<string> symbolMapLines)
 		{
 			Manager manager = new(vtblLines[0]);
 			manager._OriginalVtbl = vtblLines.ToArray().ToList();
@@ -337,15 +463,52 @@ namespace VtblGenerator
 
 			for (int i = 3; i < vtblLines.Count; i++)
 			{
-				manager.ParseLine(vtblLines[i].Replace("\"", ""), i - 3);
+				manager.ParseLine(vtblLines[i].Replace("\"", ""), i - 3, ref linkMapLines);
 			}
-			manager.Output();
+			manager.Output(ref symbolMapLines);
 		}
 
 		private static void Main()
 		{
-			string[] files = Directory.GetFiles(Console.ReadLine(), "*.s", SearchOption.AllDirectories);
+			Console.Write("Path to the linker map: ");
+			string linkMapSrc = @"C:\Users\Arun\Downloads\pikmin2_linker.map"; //Console.ReadLine();
+			List<string> linkMapContents = new List<string>();
+			if (!string.IsNullOrEmpty(linkMapSrc))
+			{
+				linkMapContents = File.ReadAllLines(linkMapSrc).ToList();
 
+				for (int i = 0; i < linkMapContents.Count; i++)
+				{
+					if (!linkMapContents[i].Contains("func,weak"))
+					{
+						linkMapContents.RemoveAt(i);
+						i--;
+					}
+				}
+			}
+
+			Console.Write("Path to the symbol map: ");
+			string symbolMapPath = @"C:\Users\Arun\Downloads\pik2.map"; //Console.ReadLine();
+			List<string> symbolMapContents = new List<string>();
+			if (!string.IsNullOrEmpty(symbolMapPath))
+			{
+				symbolMapContents = File.ReadAllLines(symbolMapPath).ToList();
+
+				for (int i = 0; i < symbolMapContents.Count; i++)
+				{
+					if (symbolMapContents[i].Contains("UNUSED")
+						|| symbolMapContents[i].Contains("__vt__")
+						|| symbolMapContents[i].Contains("@")
+						|| !symbolMapContents[i].Contains(" 4 ")
+						|| string.IsNullOrEmpty(symbolMapContents[i]))
+					{
+						symbolMapContents.RemoveAt(i);
+						i--;
+					}
+				}
+			}
+
+			string[] files = Directory.GetFiles(@"D:\Backups\DESKTOP_08_02_2022\pikmin2\asm" /*Console.ReadLine()*/, "*.s", SearchOption.AllDirectories);
 			foreach (var file in files)
 			{
 				string[] fileContents = File.ReadAllLines(file);
@@ -361,7 +524,7 @@ namespace VtblGenerator
 						{
 							lines.Add(fileContents[i]);
 						}
-						OutputVtbl(lines);
+						OutputVtbl(lines, ref linkMapContents, ref symbolMapContents);
 					}
 				}
 			}
